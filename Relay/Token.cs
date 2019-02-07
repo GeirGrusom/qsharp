@@ -14,7 +14,8 @@ namespace Relay
         True,
         False,
         Null,
-        String
+        String,
+        DateTime,
     }
 
     public readonly struct Token : IEquatable<Token>, IEquatable<string>

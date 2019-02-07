@@ -126,20 +126,20 @@ namespace Relay
             {
                 if(this.input[this.currentPosition] == '\\')
                 {
-                    if(previousWasQuote)
-                    {
-                        previousWasQuote = false;
-                        ++this.currentPosition;
-                        continue;
-                    }
+                    ++this.currentPosition;
+                    previousWasQuote = !previousWasQuote;
+                    //++this.currentPosition;
+                    continue;
                 }
                 else if(this.input[this.currentPosition] == quote && !previousWasQuote)
                 {
+                    previousWasQuote = false;
                     ++this.currentPosition;
                     break;
                 }
                 else 
                 {
+                    previousWasQuote = false;
                     ++this.currentPosition;
                 }
             }
@@ -160,8 +160,113 @@ namespace Relay
             return false;
         }
 
+        bool ConsumeDateTime()
+        {
+            var oldPos = currentPosition;
+            if(!ConsumeCount(Char.IsNumber, 4))
+            {
+                return false;
+            }
+            if (!ConsumeCount(c => c == '-', 1))
+            {
+                currentPosition = oldPos;
+                return false;
+            }
+            if(!ConsumeCount(char.IsNumber, 2))
+            {
+                currentPosition = oldPos;
+                return false;
+            }
+            if (!ConsumeCount(c => c == '-', 1))
+            {
+                currentPosition = oldPos;
+                return false;
+            }
+            if (!ConsumeCount(char.IsNumber, 2))
+            {
+                currentPosition = oldPos;
+                return false;
+            }
+            if(ConsumeCount(c => c == 'T', 1))
+            {
+                if(!ConsumeCount(c => c == '0' || c == '1' || c == '2', 1))
+                {
+                    currentPosition = oldPos;
+                    return false;
+                }
+                if (!ConsumeCount(char.IsNumber, 1))
+                {
+                    currentPosition = oldPos;
+                    return false;
+                }
+                for (int i = 0; i < 2; ++i)
+                {
+                    if (!ConsumeCount(c => c == ':', 1))
+                    {
+                        currentPosition = oldPos;
+                        return false;
+                    }
+                    if (!ConsumeCount(c => c == '0' || c == '1' || c == '2' || c == '3' || c == '4' || c == '5', 1))
+                    {
+                        currentPosition = oldPos;
+                        return false;
+                    }
+                    if (!ConsumeCount(char.IsNumber, 1))
+                    {
+                        currentPosition = oldPos;
+                        return false;
+                    }
+                }
+                if(ConsumeCount(c => c == '.', 1))
+                {
+                    if(!ConsumeCount(char.IsNumber, 3))
+                    {
+                        currentPosition = oldPos;
+                        return false;
+                    }
+                }
+                if (!ConsumeCount(c => c == 'Z', 1))
+                {
+                    if (ConsumeCount(c => c == '+' || c == '-', 1))
+                    {
+                        if (!ConsumeCount(c => c == '0' || c == '1' || c == '2', 1))
+                        {
+                            currentPosition = oldPos;
+                            return false;
+                        }
+                        if (!ConsumeCount(char.IsNumber, 1))
+                        {
+                            currentPosition = oldPos;
+                            return false;
+                        }
+
+                        if (ConsumeCount(c => c == ':', 1))
+                        {
+                            if (!ConsumeCount(c => c == '0' || c == '1' || c == '2' || c == '3' || c == '4' || c == '5', 1))
+                            {
+                                currentPosition = oldPos;
+                                return false;
+                            }
+                            if (!ConsumeCount(char.IsNumber, 1))
+                            {
+                                currentPosition = oldPos;
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+            currentToken = new Token(input, lastPosition, currentPosition - lastPosition, TokenType.DateTime);
+            lastPosition = currentPosition;
+
+            return true;
+        }
+
         bool ConsumeNumber()
         {
+            var oldPos = currentPosition;
+            bool isNegative = ConsumeCount(c => c == '-', 1);
+
             if(ConsumeWhile(char.IsNumber))
             {
                 if(ConsumeCount(c => c == '.', 1))
@@ -178,10 +283,12 @@ namespace Relay
             }
             else if(ConsumeCount(c => c == '.', 1))
             {
-                if (!ConsumeWhile(char.IsNumber))
+                if(!ConsumeCount(char.IsNumber, 1))
                 {
-                    throw new FormatException("Invalid number format");
+                    currentPosition = oldPos;
+                    return false;
                 }
+                ConsumeWhile(char.IsNumber);
 
                 currentToken = new Token(input, lastPosition, currentPosition - lastPosition, TokenType.Number);
                 lastPosition = currentPosition;
@@ -196,7 +303,13 @@ namespace Relay
             int i;
             for(i = 0; i < count; ++i)
             {
-                if (currentPosition < input.Length && predicate(input[currentPosition]))
+                if(currentPosition >= input.Length)
+                {
+                    currentPosition = oldPos;
+                    return false;
+                }
+                var ch = input[currentPosition];
+                if (currentPosition < input.Length && predicate(ch))
                 {
                     ++currentPosition;
                 }
@@ -237,11 +350,10 @@ namespace Relay
             int failCount = 0;
             while(currentPosition < input.Length)
             {
-                if(ConsumeWhitespace() || ConsumeNumber() || ConsumeOperator() || ConsumeIdentifier() || ConsumeString('"') || ConsumeString('\''))
+                if(ConsumeWhitespace() || ConsumeDateTime() || ConsumeNumber() || ConsumeOperator() || ConsumeIdentifier() || ConsumeString('"') || ConsumeString('\''))
                 {
                     if(failStart != -1)
                     {
-
                         yield return new Token(this.input, failStart, failCount, TokenType.Error);
                         failStart = -1;
                         failCount = 0;
@@ -254,12 +366,19 @@ namespace Relay
                 {
                     if(failStart == -1)
                     {
-                        failStart = currentPosition;
+                        failStart = currentPosition++;
                         failCount = 1;
                     }
                     else
                     {
                         ++failCount;
+                        ++currentPosition;
+                        if(failStart + failCount >= input.Length)
+                        {
+                            yield return new Token(this.input, failStart, failCount, TokenType.Error);
+                            failStart = -1;
+                            failCount = 0;
+                        }
                     }
                 }
             }

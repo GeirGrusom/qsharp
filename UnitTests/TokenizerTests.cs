@@ -26,7 +26,8 @@ namespace Tests
             new object[] { "123.456", TokenType.Number },
             new object[] { "0.123", TokenType.Number },
             new object[] { "'Hello World!'", TokenType.String },
-            new object[] { "\"Hello World!\"", TokenType.String }
+            new object[] { "\"Hello World!\"", TokenType.String },
+            new object[] { "2019-01-01T14:30:29.499Z", TokenType.DateTime },
         };
 
         [TestCaseSource(nameof(SingelTokenTestData))]
