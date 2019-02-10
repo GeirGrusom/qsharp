@@ -105,6 +105,7 @@ namespace Relay
                 {
                     this.lastPosition = lastPos;
                     this.currentPosition = lastPos;
+                    return false;
                 }
 
                 this.lastPosition = this.currentPosition;
@@ -382,6 +383,7 @@ namespace Relay
                     }
                 }
             }
+            yield return new Token(this.input, currentPosition, 0, TokenType.EndOfFile);
         }
     }
 }

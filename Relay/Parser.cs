@@ -56,10 +56,11 @@ namespace Relay
 
             this.currentIndex = 0;
             var result = ParseOr();
-            if(!Eof)
+            if(CurrentToken.Type != TokenType.EndOfFile)
             {
                 throw new ParseException("Expected end of statement", this.CurrentToken.Offset);
             }
+
             return result;
         }
 

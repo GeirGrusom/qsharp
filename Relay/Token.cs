@@ -16,6 +16,7 @@ namespace Relay
         Null,
         String,
         DateTime,
+        EndOfFile,
     }
 
     public readonly struct Token : IEquatable<Token>, IEquatable<string>

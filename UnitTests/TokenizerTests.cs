@@ -2,7 +2,7 @@ using NUnit.Framework;
 using Relay;
 using System.Linq;
 
-namespace Tests
+namespace UnitTests
 {
     public class TokenizerTests
     {
@@ -22,6 +22,9 @@ namespace Tests
             new object[] { "foo123", TokenType.Identifier },
             new object[] { "_123", TokenType.Identifier },
             new object[] { "    \t\t\t", TokenType.Whitespace },
+            new object[] { "true", TokenType.True },
+            new object[] { "false", TokenType.False },
+            new object[] { "null", TokenType.Null },
             new object[] { "123", TokenType.Number },
             new object[] { "123.456", TokenType.Number },
             new object[] { "0.123", TokenType.Number },
@@ -37,11 +40,15 @@ namespace Tests
             var tokenizer = new Tokenizer(tokenString);
 
             // Act
-            var token = tokenizer.Tokenize().Single();
+            var tokens = tokenizer.Tokenize().ToArray();
+            var token = tokens[0];
 
             // Assert
+            Assert.That(tokens, Has.Length.EqualTo(2));
             Assert.That(token, Is.EqualTo(tokenString));
             Assert.That(token.Type, Is.EqualTo(expectedType));
+            Assert.That(tokens[1].Type, Is.EqualTo(TokenType.EndOfFile));
+
         }
 
         public static readonly object[][] MultipleTokensTestData =
@@ -59,7 +66,7 @@ namespace Tests
             var tokens = tokenizer.Tokenize().Select(x => x.ToString()).ToArray();
 
             // Assert
-            Assert.That(tokens, Is.EquivalentTo(expectedTokens));
+            Assert.That(tokens, Is.EquivalentTo(expectedTokens.Concat(new[] { "" })));
         }
     }
 }
